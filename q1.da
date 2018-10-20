@@ -12,20 +12,24 @@ class Proposer(process):
         n = (0, self) if n == None else (n[0]+1, self)  # pick a prop num
 
         # Checking if there is any preemption
+
+        output("BEFORE Preemption OLDVAL    ***********************", n)
         if pn != None:
             # If preemption and number sent by acceptor is bigger than what proposer 
             # is currently using for prepare request, acceptor updates it
+
+            output("Preemption OLDVAL    ***********************", n)
             if pn[0] > n[0]:
                 output("Preemption ***********************", n, "#######################", pn)
-                n = (pn[0], self)
-                output("~~~~~~~~~~updated~~~~~~~~~", n)
+                n = (pn[0]+1, self)
+                output("Preemption NEWVAL    ***********************", n)
             else:
                 output("No preemption")
 
-        output("proposal number n ", n)
+        #output("proposal number n ", n)
 
         send(('prepare', n), to= majority)
-        #output("Sedning prepare request", n)
+        #output("Proposer: Sedning prepare request", n)
 
         if await(len(setof(a, received(('respond', _n, _), from_ =a)))
                  > len(acceptors)/2):
@@ -38,7 +42,7 @@ class Proposer(process):
             send(('proposed_value', v), to=nodeof(self))
 
             send(('accept', n, v), to= responded)
-            #output("Sending accept request", n, v)
+            #output("Proposer: Sending accept request", n, v)
             debug('### chose', n, v)
 
         elif timeout(TIMEOUT):
@@ -67,17 +71,17 @@ class Acceptor(process):
             maxprop = anyof(setof((n, v), sent(('accepted', n, v)),
                                n==max(setof(n, sent(('accepted', n, _))))))
             send(('respond', n, maxprop), to =p)
-            output("Accepted promise request", n)
+            #output("Acceptor: Accepted promise request", n)
         else:
             maxprop = anyof(setof((n, v), sent(('respond', n, v)),
                                n==max(setof(n, sent(('respond', n, _))))))
             send(('preempt', n, maxprop), to =p)
-            output("Sending preempt to", p)
+            #output("Acceptor: Sending preempt to", p)
 
     def receive(msg= ('accept', n, v)):
         if not some(sent(('respond', n2, _)), has= n2 > n):
             send(('accepted', n, v), to= learners)
-            output("Accepted proposal", n, v)
+            #output("Acceptor: Accepted proposal", n, v)
 
     def run():
         await(received(('done',)))
@@ -121,6 +125,9 @@ def main():
 
     await(each(l in learners, has=received(('learned',), from_=l)))
 
+    output('done')
+    send(('done',), to= (acceptors|proposers))
+
     # Set for storing learned values
     learned_value = set()
     #Count for checking number of learners who have learned chosen value
@@ -154,8 +161,7 @@ def main():
     else:
         output("Correctness testing: Failed")
 
-    output('done')
-    send(('done',), to= (acceptors|proposers))
+    
 
 # This is an executable specification of the algorithm described in
 # Lamport, L. (2001).  Paxos Made Simple.  ACM SIGACT News 
