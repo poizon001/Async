@@ -1,0 +1,81 @@
+import sys
+import random
+import time
+from q2 import Acceptor
+from q2 import Proposer
+from q2 import Learner
+config(channel is fifo, clock is lamport)
+codePaths=[q2,origq2]
+
+class PerfEval(process):
+    def setup(p,a,l,n,r,d,w,tp,tl):  # s is set of all other processes
+        self.p=p
+        self.a=a
+        self.l=l
+        self.n=n
+        self.r=r
+        self.d=d
+        self.w=w
+        self.tp=tp
+        self.tl=tl
+
+    def performanceTesting():
+        for codePath in codePaths:
+            output("**********************",codePath,"***********************")
+            for run in range(n):
+                output("==============================run:", run, "==================================")
+
+                acceptors = new(codePath.Acceptor, num= a)
+                proposers = new(codePath.Proposer, (acceptors,tp,w,r,d), num= p)
+                learners = new(codePath.Learner, (acceptors,tl,r,d), num= l)
+                for p in acceptors: setup(p, (learners,r,d))
+                start(acceptors | proposers | learners)
+
+    def run():
+        performanceTesting()
+        output("In child", self)
+        output('terminating...')
+        send(('done', self), to= parent())
+        output("Sending done to parent")
+        await(received(('done'), from_=parent()))
+        output("Awaiting done from parent")
+        output("Received done from parent")
+
+def main():
+    # p - number of proposers
+    p = int(sys.argv[1]) if len(sys.argv) > 3 else 5
+
+    # a - number of acceptors
+    a = int(sys.argv[2]) if len(sys.argv) > 3 else 5
+
+    # l - number of learners
+    l = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+
+    # n - number of repetitions for each run
+    n = int(sys.argv[4]) if len(sys.argv) > 10 else 10
+
+    # r - message loss rate
+    r = int(sys.argv[5]) if len(sys.argv) > 1 else 0
+
+    # d - message delay, up to the number of seconds specified
+    d = int(sys.argv[6]) if len(sys.argv) > 1 else 0
+
+    # w - wait time, in seconds, before trying a new round
+    w = int(sys.argv[7]) if len(sys.argv) > 1 else 0
+
+    # tp - timeout for poposers
+    tp = int(sys.argv[8]) if len(sys.argv) > 1 else 2
+
+    # tl - timeout for learners
+    tl = int(sys.argv[9]) if len(sys.argv) > 1 else 2
+
+    eval = new(PerfEval, num=1)
+    setup(eval,(p,a,l,n,r,d,w,tp,tl))
+
+    start(eval)
+
+    await(each(e in eval, has=received(('done', e))))
+    
+    send(('done'), to=eval)
+    output("Sending done to child")
+
