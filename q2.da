@@ -15,7 +15,7 @@ class Proposer(process):
         n = (0, self) if n == None else (n[0]+1, self)  # pick a prop num
 
         # Checking if there is any preemption
-        output("BEFORE Preemption OLDVAL    ***********************", n)
+        #output("BEFORE Preemption OLDVAL    ***********************", n)
         if pn != None:
             # If preemption and number sent by acceptor is bigger than what proposer 
             # is currently using for prepare request, acceptor updates it
@@ -23,9 +23,9 @@ class Proposer(process):
             output("Preemption OLDVAL    ***********************", n)
             if pn[0] > n[0]:
                 n = (pn[0]+1, self)
-                output("Preemption NEWVAL    ***********************", n)
-            else:
-                output("No preemption")
+                #output("Preemption NEWVAL    ***********************", n)
+            else: pass
+                #output("No preemption")
 
         for m in majority:
             sendMsg(('prepare', n), m)
@@ -50,7 +50,7 @@ class Proposer(process):
 
     def msgLoss():
         ran = random.uniform(0.0, 1.0)
-        output("Inside msg loss ", ran)
+        #output("Inside msg loss ", ran)
         if ran < r:
             return True
         else:
@@ -58,22 +58,22 @@ class Proposer(process):
 
     def sendMsg(msg, to):
         if msgLoss() == False:
-            output("MSGLOSS: Sending", msg, "to", to)
+            #output("MSGLOSS: Sending", msg, "to", to)
             if d != 0:
                 time.sleep(d)
             send(msg, to= to)
-        else:
-            output("MSGLOSS: Not sending", msg, "to", to)
+        else: pass
+            #output("MSGLOSS: Not sending", msg, "to", to)
 
 
     def run():
         while not received(('done',)):
             # Wait before starting another prepare request
             if w != 0:
-                output("Wait time before sending prepare")
+                #output("Wait time before sending prepare")
                 time.sleep(w)
             to_consent()
-        output('terminating')
+        output('terminating proposer--------------', self)
 
     #Method to receive the preemption msg from acceptors with max proposal number
     def receive(msg= ('preempt', n, s)):
@@ -105,7 +105,7 @@ class Acceptor(process):
 
     def run():
         await(received(('done',)))
-        output('terminating')
+        output('terminating acceptor===================', self)
 
     def anyof(s):
         """return any element of set s if s is not empty or 'None' otherwise"""
@@ -113,7 +113,7 @@ class Acceptor(process):
 
     def msgLoss():
         ran = random.uniform(0.0, 1.0)
-        output("Inside msg loss ", ran)
+        #output("Inside msg loss ", ran)
         if ran < r:
             return True
         else:
@@ -121,12 +121,12 @@ class Acceptor(process):
 
     def sendMsg(msg, to):
         if msgLoss() == False:
-            output("MSGLOSS: Sending", msg, "to", to)
+            #output("MSGLOSS: Sending", msg, "to", to)
             if d != 0:
                 time.sleep(d)
             send(msg, to= to)
-        else:
-            output("MSGLOSS: Not sending", msg, "to", to)
+        else: pass
+            #output("MSGLOSS: Not sending", msg, "to", to)
 
 
 class Learner(process):
@@ -145,9 +145,10 @@ class Learner(process):
 
     def run():
         learn()
-        output('terminating')
+        output('terminating learner+++++++++++++++++', self)
         send(('learned', ), to=nodeof(self))
         send(('learned_proposal', accepted_proposal), to=nodeof(self))
+        send(('learning_done'), to= parent())
 
 def main():
     nacceptors = int(sys.argv[1]) if len(sys.argv) > 1 else 3
