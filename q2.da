@@ -157,9 +157,9 @@ def main():
     nlearners = int(sys.argv[3]) if len(sys.argv) > 3 else 3
 
     acceptors = new(Acceptor, num= nacceptors)
-    proposers = new(Proposer, (acceptors, 2, 0, 0.2, 1,), num= nproposers)
-    learners = new(Learner, (acceptors, 10, 0.2, 1,), num= nlearners)
-    for p in acceptors: setup(p, (learners, 0.2, 1,))
+    proposers = new(Proposer, (acceptors, 4, 2, 0, 1,), num= nproposers)
+    learners = new(Learner, (acceptors, 40, 0, 1,), num= nlearners)
+    for p in acceptors: setup(p, (learners, 0, 1,))
     start(acceptors | proposers | learners)
 
     await(each(l in learners, has=received(('learned',), from_=l)))
@@ -184,6 +184,8 @@ def main():
         correct = False
     if correct == True and next(iter(learned_value)) == None:
         correct = False
+
+    output("$$$$$$$$$$$$$$", learned_value)
 
     # Checking if only one of the proposed value is learned and not any anything else
     if correct:
