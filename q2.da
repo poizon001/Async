@@ -6,7 +6,7 @@ import random
 
 
 class Proposer(process):
-    def setup(acceptors:set, tp:int, w:int, r:float):
+    def setup(acceptors:set, tp:int, w:int, r:float, d:int):
         output("Wait time  =>" , self.w)
         output("Msg loss rate =>", r)
         self.n = None              # proposal number
@@ -39,6 +39,8 @@ class Proposer(process):
                       or {randint(1,100)})  # any value, pick in 1..100
             responded = setof(a, received(('respond', _n, _), from_ =a))
 
+            send(('proposed_value', v), to=nodeof(self))
+
             for res in responded:
                 sendMsg(('accept', n, v), res)
 
@@ -59,6 +61,8 @@ class Proposer(process):
     def sendMsg(msg, to):
         if msgLoss() == False:
             output("MSGLOSS: Sending", msg, "to", to)
+            if d != 0:
+                time.sleep(d)
             send(msg, to= to)
         else:
             output("MSGLOSS: Not sending", msg, "to", to)
@@ -82,7 +86,7 @@ class Proposer(process):
         return next(iter(s)) if s else None
 
 class Acceptor(process):
-    def setup(learners:set, r:float): pass
+    def setup(learners:set, r:float, d:int): pass
 
     def receive(msg= ('prepare', n), from_= p):
         if each(sent(('respond', n2, _)), has= n > n2):
@@ -120,19 +124,23 @@ class Acceptor(process):
     def sendMsg(msg, to):
         if msgLoss() == False:
             output("MSGLOSS: Sending", msg, "to", to)
+            if d != 0:
+                time.sleep(d)
             send(msg, to= to)
         else:
             output("MSGLOSS: Not sending", msg, "to", to)
 
 
 class Learner(process):
-    def setup(acceptors:set, tl:int,  r:float): pass
+    def setup(acceptors:set, tl:int,  r:float, d:int):
+        self.accepted_proposal = None
 
     def learn():
         if await(some(received(('accepted', n, v)),
                       has= len(setof(a, received(('accepted', _n, _v), from_=a)))
                            > len(acceptors)/2)):
             output('learned', n, v)
+            accepted_proposal = (n[1],v)
 
         elif timeout(tl):
             output("TL", tl, 'failed learning anything')
@@ -141,22 +149,7 @@ class Learner(process):
         learn()
         output('terminating')
         send(('learned', ), to=nodeof(self))
-        #sendMsg(('learned', ), nodeof(self))
-
-    def msgLoss():
-        ran = random.uniform(0.0, 1.0)
-        output("Inside msg loss ", ran)
-        if ran < r:
-            return True
-        else:
-            return False
-
-    def sendMsg(msg, to):
-        if msgLoss() == False:
-            output("MSGLOSS: Sending", msg, "to", to)
-            send(msg, to= to)
-        else:
-            output("MSGLOSS: Not sending", msg, "to", to)
+        send(('learned_proposal', accepted_proposal), to=nodeof(self))
 
 def main():
     nacceptors = int(sys.argv[1]) if len(sys.argv) > 1 else 3
@@ -164,15 +157,50 @@ def main():
     nlearners = int(sys.argv[3]) if len(sys.argv) > 3 else 3
 
     acceptors = new(Acceptor, num= nacceptors)
-    proposers = new(Proposer, (acceptors, 2, 0, 0.2), num= nproposers)
-    learners = new(Learner, (acceptors, 10, 0.2,), num= nlearners)
-    for p in acceptors: setup(p, (learners, 0.2,))
+    proposers = new(Proposer, (acceptors, 2, 0, 0.2, 1,), num= nproposers)
+    learners = new(Learner, (acceptors, 10, 0.2, 1,), num= nlearners)
+    for p in acceptors: setup(p, (learners, 0.2, 1,))
     start(acceptors | proposers | learners)
 
     await(each(l in learners, has=received(('learned',), from_=l)))
 
     output('done')
     send(('done',), to= (acceptors|proposers))
+
+    # Set for storing learned values
+    learned_value = set()
+    #Count for checking number of learners who have learned chosen value
+    count = 0
+    # Flag to indicate the correctness
+    correct = True
+
+    #For all learners fetching the learned values
+    for l in learners:
+        learned_value = learned_value | setof(b, received(('learned_proposal', b), from_=l))
+        count = count + 1
+
+    # Checking if all learners have learned the same value
+    if count != nlearners or len(learned_value) != 1:
+        correct = False
+    if correct == True and next(iter(learned_value)) == None:
+        correct = False
+
+    # Checking if only one of the proposed value is learned and not any anything else
+    if correct:
+        # Set of all proposed values
+        proposed_values = set()
+        for proposer in proposers:
+            proposed_values = proposed_values | setof(v, received(('proposed_value', v), from_=proposer))
+
+        # Checking if only proposed values has been chosen
+        k = next(iter(learned_value))
+        if k[1] not in proposed_values:
+            correct = False
+
+    if correct:
+        output("Correctness testing: Passed")
+    else:
+        output("Correctness testing: Failed")
 
 
 # This is an executable specification of the algorithm described in
