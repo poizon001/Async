@@ -28,10 +28,12 @@ class PerfEval(process):
                 learners = new(codePath.Learner, (acceptors,tl,r,d), num= l)
                 for p in acceptors: setup(p, (learners,r,d))
                 start(acceptors | proposers | learners)
+                
+                await(each(l in learners, has=received(('learning_done', l), from_=l)))
+                output("########################Received from learners########################")
 
-                await(each(l in learners, has=received(('learned',), from_=l)))
-
-                send(('done',), to= (acceptors|proposers))
+                send(('ExecDone',), to= (acceptors|proposers))
+                output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$")
 
     def run():
         performanceTesting()
