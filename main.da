@@ -1,11 +1,9 @@
 import sys
 import random
 import time
-from q2 import Acceptor
-from q2 import Proposer
-from q2 import Learner
-config(channel is fifo, clock is lamport)
-codePaths=[q2,origq2]
+import q2
+import origq2
+codePaths=[q2]
 
 class PerfEval(process):
     def setup(p,a,l,n,r,d,w,tp,tl):  # s is set of all other processes
@@ -31,6 +29,10 @@ class PerfEval(process):
                 for p in acceptors: setup(p, (learners,r,d))
                 start(acceptors | proposers | learners)
 
+                await(each(l in learners, has=received(('learned',), from_=l)))
+
+                send(('done',), to= (acceptors|proposers))
+
     def run():
         performanceTesting()
         output("In child", self)
@@ -52,10 +54,10 @@ def main():
     l = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 
     # n - number of repetitions for each run
-    n = int(sys.argv[4]) if len(sys.argv) > 10 else 10
+    n = int(sys.argv[4]) if len(sys.argv) > 0 else 10
 
     # r - message loss rate
-    r = int(sys.argv[5]) if len(sys.argv) > 1 else 0
+    r = float(sys.argv[5]) if len(sys.argv) > 1 else 0
 
     # d - message delay, up to the number of seconds specified
     d = int(sys.argv[6]) if len(sys.argv) > 1 else 0
@@ -71,6 +73,8 @@ def main():
 
     eval = new(PerfEval, num=1)
     setup(eval,(p,a,l,n,r,d,w,tp,tl))
+
+    output("============", n)
 
     start(eval)
 
