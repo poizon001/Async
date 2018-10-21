@@ -57,7 +57,7 @@ class Proposer(process):
         if s != None:
             if pn == None:
                 pn = s[0]
-            elif s[0] > pn:
+            elif s[0][0] > pn[0]:
                 pn = s[0]
 
     def anyof(s):
