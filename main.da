@@ -17,23 +17,34 @@ class PerfEval(process):
         self.tp=tp
         self.tl=tl
 
+
     def performanceTesting():
         for codePath in codePaths:
             output("**********************",codePath,"***********************")
+            l = []
+            p = []
+            a = []
             for run in range(n):
                 output("==============================run:", run, "==================================")
 
                 acceptors = new(codePath.Acceptor, num= a)
+                a.append(acceptors)
+
                 proposers = new(codePath.Proposer, (acceptors,tp,w,r,d), num= p)
+                p.append(proposers)
+
                 learners = new(codePath.Learner, (acceptors,tl,r,d), num= l)
-                for p in acceptors: setup(p, (learners,r,d))
-                start(acceptors | proposers | learners)
+                l.append(learners)
+
+                for pp in a[run]: setup(pp, (l[run],r,d))
+
+                start(a[run] | p[run] | l[run])
                 
-                await(each(l in learners, has=received(('learning_done', l), from_=l)))
+                await(each(ll in l[run], has=received(('learning_done', ll), from_=ll)))
                 output("########################Received from learners########################")
 
-                send(('ExecDone',), to= (acceptors|proposers))
-                output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$")
+                send(('ExecDone',), to= (a[run]|p[run]))
+                output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$ FOR RUN", run)
 
     def run():
         performanceTesting()
