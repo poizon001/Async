@@ -7,8 +7,6 @@ import random
 
 class Proposer(process):
     def setup(acceptors:set, tp:int, w:int, r:float, d:int):
-        output("Wait time  =>" , self.w)
-        output("Msg loss rate =>", r)
         self.n = None              # proposal number
         self.pn = None             # proposal number returned by acceptor while preemption 
         self.majority = acceptors  # majority of acceptors; all in other papers
@@ -157,7 +155,7 @@ def main():
     nlearners = int(sys.argv[3]) if len(sys.argv) > 3 else 3
 
     acceptors = new(Acceptor, num= nacceptors)
-    proposers = new(Proposer, (acceptors, 4, 2, 0, 1,), num= nproposers)
+    proposers = new(Proposer, (acceptors, 10, 2, 0, 1,), num= nproposers)
     learners = new(Learner, (acceptors, 40, 0, 1,), num= nlearners)
     for p in acceptors: setup(p, (learners, 0, 1,))
     start(acceptors | proposers | learners)
