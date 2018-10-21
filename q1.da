@@ -20,7 +20,6 @@ class Proposer(process):
 
             output("Preemption OLDVAL    ***********************", n)
             if pn[0] > n[0]:
-                output("Preemption ***********************", n, "#######################", pn)
                 n = (pn[0]+1, self)
                 output("Preemption NEWVAL    ***********************", n)
             else:
@@ -55,9 +54,7 @@ class Proposer(process):
 
     #Method to receive the preemption msg from acceptors with max proposal number
     def receive(msg= ('preempt', n, s)):
-        #output("Here I am getting preempt msg with", s)
         if s != None:
-            output("GOT====>", s, self)
             pn = s[0]
 
     def anyof(s):
@@ -161,7 +158,6 @@ def main():
     else:
         output("Correctness testing: Failed")
 
-    
 
 # This is an executable specification of the algorithm described in
 # Lamport, L. (2001).  Paxos Made Simple.  ACM SIGACT News 
