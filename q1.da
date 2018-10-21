@@ -55,7 +55,10 @@ class Proposer(process):
     #Method to receive the preemption msg from acceptors with max proposal number
     def receive(msg= ('preempt', n, s)):
         if s != None:
-            pn = s[0]
+            if pn == None:
+                pn = s[0]
+            elif s[0] > pn:
+                pn = s[0]
 
     def anyof(s):
         return next(iter(s)) if s else None
