@@ -1,6 +1,6 @@
 import sys
 from random import randint
-TIMEOUT = 2
+TIMEOUT = 3
 
 class Proposer(process):
     def setup(acceptors:set):
@@ -12,8 +12,7 @@ class Proposer(process):
         n = (0, self) if n == None else (n[0]+1, self)  # pick a prop num
 
         # Checking if there is any preemption
-
-        output("BEFORE Preemption OLDVAL    ***********************", n)
+        #output("BEFORE Preemption OLDVAL    ***********************", n)
         if pn != None:
             # If preemption and number sent by acceptor is bigger than what proposer 
             # is currently using for prepare request, acceptor updates it
@@ -50,7 +49,7 @@ class Proposer(process):
     def run():
         while not received(('done',)):
             to_consent()
-        output('terminating')
+        output('####terminating proposer####', self)
 
     #Method to receive the preemption msg from acceptors with max proposal number
     def receive(msg= ('preempt', n, s)):
@@ -82,7 +81,7 @@ class Acceptor(process):
 
     def run():
         await(received(('done',)))
-        output('terminating')
+        output('=====terminating Acceptor=====', self)
 
     def anyof(s):
         """return any element of set s if s is not empty or 'None' otherwise"""
@@ -104,7 +103,7 @@ class Learner(process):
 
     def run():
         learn()
-        output('terminating')
+        output('-----terminating Learner-----', self)
         send(('learned', ), to=nodeof(self))
         send(('learned_proposal', accepted_proposal), to=nodeof(self))
 
@@ -137,8 +136,13 @@ def main():
         learned_value = learned_value | setof(b, received(('learned_proposal', b), from_=l))
         count = count + 1
 
+    #output("Learned values $$$$$$$$$$$", learned_value)
+
     # Checking if all learners have learned the same value
     if count != nlearners or len(learned_value) != 1:
+        correct = False
+
+    if correct == True and next(iter(learned_value)) == None:
         correct = False
 
     # Checking if only one of the proposed value is learned and not any anything else
