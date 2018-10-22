@@ -19,16 +19,26 @@ class PerfEval(process):
 
     def performanceTesting():
         codes = {}
+
+        running_time = {}
+        #specs = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "time" : 0, "time_c": 0}
+
         for codePath in codePaths:
-            output("**********************",codePath,"***********************")
+            #output("**********************",codePath,"***********************")
             cLearners = set()
             cProposers = set()
             cAcceptors = set()
             codes[codePath] = []
+            running_time[codePath.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : 0, "time_c": 0}      
 
             for run in range(n):
                 codes[codePath].append({"cLearners" : set(), "cProposers": set(), "cAcceptors" : set()})
-                output("==============================", codePath, " RUN:", run, "==================================")
+                output("==============================", codePath.__name__, " RUN:", run, "==================================")
+
+                #starting time
+                start_time = time.time()
+                start_time_c = time.process_time()
+
                 acceptors = new(codePath.Acceptor, num= a)
                 codes[codePath][run]["cAcceptors"] = acceptors
 
@@ -38,18 +48,40 @@ class PerfEval(process):
                 learners = new(codePath.Learner, (codes[codePath][run]["cAcceptors"],tl,r,d), num= l)
                 codes[codePath][run]["cLearners"] = learners
 
-                output("RUN", run, "code --->", codes)
+                #output("RUN", run, "code --->", codes)
 
                 for pp in codes[codePath][run]["cAcceptors"]: setup(pp, (codes[codePath][run]["cLearners"],r,d))
+
+
 
                 start(codes[codePath][run]["cAcceptors"] | codes[codePath][run]["cProposers"] | codes[codePath][run]["cLearners"])
                 
                 await(each(ll in codes[codePath][run]["cLearners"], has=received(('learning_done', ll), from_=ll)))
 
-                output("########################Received from learners########################")
+                #output("########################Received from learners########################")
 
                 send(('ExecDone',), to= (codes[codePath][run]["cAcceptors"]|codes[codePath][run]["cProposers"]))
+
+                #end time
+                end_time = time.time()
+                end_time_c = time.process_time()
+
+                elapsed_time = round(end_time - start_time, 4)
+                elapsed_time_c = round(end_time_c - start_time_c, 4)
+
+                t = running_time[codePath.__name__]["time"]
+                running_time[codePath.__name__]["time"] = t + elapsed_time
+
+                tc = running_time[codePath.__name__]["time_c"]
+                running_time[codePath.__name__]["time_c"] = tc + elapsed_time_c
+
                 output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$ FOR RUN", run)
+
+                #output("File", codePath.__name__, "run", run, "elapsed_time", elapsed_time, "elapsed_time_c", elapsed_time_c)
+                output(running_time)
+
+        output("--------RUN TIME ANALYSIS----------")
+        output(running_time)
 
     def run():
         performanceTesting()
@@ -72,7 +104,7 @@ def main():
     l = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 
     # n - number of repetitions for each run
-    n = int(sys.argv[4]) if len(sys.argv) > 0 else 10
+    n = int(sys.argv[4]) if len(sys.argv) > 10 else 10
 
     # r - message loss rate
     r = float(sys.argv[5]) if len(sys.argv) > 1 else 0
@@ -91,8 +123,6 @@ def main():
 
     eval = new(PerfEval, num=1)
     setup(eval,(p,a,l,n,r,d,w,tp,tl))
-
-    output("============", n)
 
     start(eval)
 
