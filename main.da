@@ -3,7 +3,7 @@ import random
 import time
 import q2
 import origq2
-codePaths=[q2, origq2]
+specifications=[q2, origq2]
 
 class PerfEval(process):
     def setup(p,a,l,n,r,d,w,tp,tl):  # s is set of all other processes
@@ -19,48 +19,41 @@ class PerfEval(process):
 
     def performanceTesting():
         codes = {}
-
         running_time = {}
-        #specs = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "time" : [], "time_c": []}
 
-        for codePath in codePaths:
-            #output("**********************",codePath,"***********************")
-            cLearners = set()
-            cProposers = set()
-            cAcceptors = set()
-            codes[codePath] = []
-            running_time[codePath.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : [], "time_c": [], "delay": d, "wait": w, "tp": tp, "tl": tl}      
+        for spec in specifications:
+            #output("**********************",spec,"***********************")
+            codes[spec] = []
+            running_time[spec.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : [], "time_c": [], "delay": d, "wait": w, "tp": tp, "tl": tl}      
 
             for run in range(n):
-                codes[codePath].append({"cLearners" : set(), "cProposers": set(), "cAcceptors" : set()})
-                output("==============================", codePath.__name__, " RUN:", run, "==================================")
+                codes[spec].append({"cLearners" : set(), "cProposers": set(), "cAcceptors" : set()})
+                output("==============================", spec.__name__, " RUN:", run, "==================================")
 
                 #starting time
                 start_time = time.time()
                 start_time_c = time.process_time()
 
-                acceptors = new(codePath.Acceptor, num= a)
-                codes[codePath][run]["cAcceptors"] = acceptors
+                acceptors = new(spec.Acceptor, num= a)
+                codes[spec][run]["cAcceptors"] = acceptors
 
-                proposers = new(codePath.Proposer, (codes[codePath][run]["cAcceptors"],tp,w,r,d), num= p)
-                codes[codePath][run]["cProposers"] = proposers
+                proposers = new(spec.Proposer, (codes[spec][run]["cAcceptors"],tp,w,r,d), num= p)
+                codes[spec][run]["cProposers"] = proposers
 
-                learners = new(codePath.Learner, (codes[codePath][run]["cAcceptors"],tl,r,d), num= l)
-                codes[codePath][run]["cLearners"] = learners
+                learners = new(spec.Learner, (codes[spec][run]["cAcceptors"],tl,r,d), num= l)
+                codes[spec][run]["cLearners"] = learners
 
                 #output("RUN", run, "code --->", codes)
 
-                for pp in codes[codePath][run]["cAcceptors"]: setup(pp, (codes[codePath][run]["cLearners"],r,d))
+                for pp in codes[spec][run]["cAcceptors"]: setup(pp, (codes[spec][run]["cLearners"],r,d))
 
-
-
-                start(codes[codePath][run]["cAcceptors"] | codes[codePath][run]["cProposers"] | codes[codePath][run]["cLearners"])
+                start(codes[spec][run]["cAcceptors"] | codes[spec][run]["cProposers"] | codes[spec][run]["cLearners"])
                 
-                await(each(ll in codes[codePath][run]["cLearners"], has=received(('learning_done', ll), from_=ll)))
+                await(each(ll in codes[spec][run]["cLearners"], has=received(('learning_done', ll), from_=ll)))
 
                 #output("########################Received from learners########################")
 
-                send(('ExecDone',), to= (codes[codePath][run]["cAcceptors"]|codes[codePath][run]["cProposers"]))
+                send(('ExecDone',), to= (codes[spec][run]["cAcceptors"]|codes[spec][run]["cProposers"]))
 
                 #end time
                 end_time = time.time()
@@ -69,15 +62,15 @@ class PerfEval(process):
                 elapsed_time = round(end_time - start_time, 4)
                 elapsed_time_c = round(end_time_c - start_time_c, 4)
 
-                t = running_time[codePath.__name__]["time"]
-                running_time[codePath.__name__]["time"].append(elapsed_time)
+                t = running_time[spec.__name__]["time"]
+                running_time[spec.__name__]["time"].append(elapsed_time)
 
-                tc = running_time[codePath.__name__]["time_c"]
-                running_time[codePath.__name__]["time_c"].append(elapsed_time_c)
+                tc = running_time[spec.__name__]["time_c"]
+                running_time[spec.__name__]["time_c"].append(elapsed_time_c)
 
                 output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$ FOR RUN", run)
 
-                #output("File", codePath.__name__, "run", run, "elapsed_time", elapsed_time, "elapsed_time_c", elapsed_time_c)
+                #output("File", spec.__name__, "run", run, "elapsed_time", elapsed_time, "elapsed_time_c", elapsed_time_c)
                 output(running_time)
 
         output("--------RUN TIME ANALYSIS----------")
