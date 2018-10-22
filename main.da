@@ -4,6 +4,7 @@ import time
 import q3_2
 import orig_q3_2
 specifications=[q3_2, orig_q3_2]
+import statistics as stat
 
 class PerfEval(process):
     def setup(p,a,l,n,r,d,w,tp,tl):  # s is set of all other processes
@@ -24,7 +25,7 @@ class PerfEval(process):
         for spec in specifications:
             #output("**********************",spec,"***********************")
             codes[spec] = []
-            running_time[spec.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : [], "time_c": [], "delay": d, "wait": w, "tp": tp, "tl": tl}      
+            running_time[spec.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : [], "time_c": [], "delay": d, "wait": w, "tp": tp, "tl": tl, "consensus": True}      
 
             for run in range(n):
                 codes[spec].append({"cLearners" : set(), "cProposers": set(), "cAcceptors" : set()})
@@ -48,8 +49,14 @@ class PerfEval(process):
                 for pp in codes[spec][run]["cAcceptors"]: setup(pp, (codes[spec][run]["cLearners"],r,d))
 
                 start(codes[spec][run]["cAcceptors"] | codes[spec][run]["cProposers"] | codes[spec][run]["cLearners"])
-                
-                await(each(ll in codes[spec][run]["cLearners"], has=received(('learning_done', ll), from_=ll)))
+
+                consensus_reached = True
+                if await(each(ll in codes[spec][run]["cLearners"], has=received(('learning_done', ll, True), from_=ll))):
+                    pass
+                elif await(each(ll in codes[spec][run]["cLearners"], has=received(('learning_done', ll, False), from_=ll))):
+                    consensus_reached = False
+                elif timeout(10):
+                    consensus_reached = False
 
                 #output("########################Received from learners########################")
 
@@ -59,16 +66,19 @@ class PerfEval(process):
                 end_time = time.time()
                 end_time_c = time.process_time()
 
-                elapsed_time = round(end_time - start_time, 4)
-                elapsed_time_c = round(end_time_c - start_time_c, 4)
+                if consensus_reached:
+                    elapsed_time = round(end_time - start_time, 4)
+                    elapsed_time_c = round(end_time_c - start_time_c, 4)
 
-                t = running_time[spec.__name__]["time"]
-                running_time[spec.__name__]["time"].append(elapsed_time)
+                    t = running_time[spec.__name__]["time"]
+                    running_time[spec.__name__]["time"].append(elapsed_time)
 
-                tc = running_time[spec.__name__]["time_c"]
-                running_time[spec.__name__]["time_c"].append(elapsed_time_c)
+                    tc = running_time[spec.__name__]["time_c"]
+                    running_time[spec.__name__]["time_c"].append(elapsed_time_c)
+                else:
+                    output(spec.__name__, "=======Consensus not reached for run========", run)
 
-                output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$ FOR RUN", run)
+                output("############ Send ExecDone to Acceptors and Ppoposors ######### FOR RUN", run)
 
                 #output("File", spec.__name__, "run", run, "elapsed_time", elapsed_time, "elapsed_time_c", elapsed_time_c)
                 output(running_time)
@@ -90,9 +100,9 @@ class PerfEval(process):
             total_time = 0
             total_time_c = 0
 
-            output("#########################################", key ,"################################################")
-            output("#################################### PERFORMANCE TESTING RESULT ##################################")
-            output("################################## DATA FOR MULTIPLE ITERATIONS ##################################")
+            output("#########################################", key ,"######################################################")
+            output("#################################### PERFORMANCE TESTING RESULT #####################################")
+            output("################################## DATA FOR MULTIPLE ITERATIONS #####################################")
             run = 1
             output( "{:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}".format('run', 'delay','wait', 'rate', 'tp', 'tl', 'elapsed_time', 'cpu_time'))
             for a, b in zip(time, time_c):
@@ -100,13 +110,29 @@ class PerfEval(process):
                 run = run + 1
                 total_time = total_time + a
                 total_time_c = total_time_c + b
-            output("##################################################################################################")
+            output("#####################################################################################################")
 
             run = run - 1
-            avg_elapsed_time = round((total_time/run), 4)
-            avg_cpu_time = round((total_time_c/run), 4)
+            avg_elapsed_time = 0
+            avg_cpu_time = 0
+            sd_time = 0
+            sd_time_c = 0
+            if len(time) >= 2:
+                sd_time = round(stat.stdev(time), 4)
+            if len(time_c) >= 2:
+                sd_time_c = round(stat.stdev(time_c), 4)
 
-            output("########Average Elapsed Time : ",avg_elapsed_time ," Average CPU time",avg_cpu_time, "##############")
+            if run > 0:
+                avg_elapsed_time = round((total_time/run), 4)
+                avg_cpu_time = round((total_time_c/run), 4)
+
+            Rtmin = min(time)
+            Rtmax = max(time)
+            Rtcmin = min(time_c)
+            Rtcmax = max(time_c)
+
+            output("#### Elapsed Time (mean -",avg_elapsed_time , "SD -",  sd_time, "Range - [", Rtmin, "-", Rtmax,"] ) #######") 
+            output("#### CPU time (mean -",avg_cpu_time, "SD -",  sd_time_c, "Range - [", Rtcmin,"-", Rtcmax, "] ) #######")
             output()
             output()
 
