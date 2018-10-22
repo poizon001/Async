@@ -21,7 +21,7 @@ class PerfEval(process):
         codes = {}
 
         running_time = {}
-        #specs = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "time" : 0, "time_c": 0}
+        #specs = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "time" : [], "time_c": []}
 
         for codePath in codePaths:
             #output("**********************",codePath,"***********************")
@@ -29,7 +29,7 @@ class PerfEval(process):
             cProposers = set()
             cAcceptors = set()
             codes[codePath] = []
-            running_time[codePath.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : 0, "time_c": 0}      
+            running_time[codePath.__name__] = {"learners": l, "acceptors" : a, "proposers": p, "runs": n, "rate": r, "time" : [], "time_c": [], "delay": d, "wait": w, "tp": tp, "tl": tl}      
 
             for run in range(n):
                 codes[codePath].append({"cLearners" : set(), "cProposers": set(), "cAcceptors" : set()})
@@ -70,10 +70,10 @@ class PerfEval(process):
                 elapsed_time_c = round(end_time_c - start_time_c, 4)
 
                 t = running_time[codePath.__name__]["time"]
-                running_time[codePath.__name__]["time"] = t + elapsed_time
+                running_time[codePath.__name__]["time"].append(elapsed_time)
 
                 tc = running_time[codePath.__name__]["time_c"]
-                running_time[codePath.__name__]["time_c"] = tc + elapsed_time_c
+                running_time[codePath.__name__]["time_c"].append(elapsed_time_c)
 
                 output("$$$$$$$$Send ExecDone to AnP $$$$$$$$$$$ FOR RUN", run)
 
@@ -82,6 +82,41 @@ class PerfEval(process):
 
         output("--------RUN TIME ANALYSIS----------")
         output(running_time)
+        displayResult(running_time)
+
+    def displayResult(running_time):
+        for key, value in running_time.items():
+            time = value["time"]
+            time_c = value["time_c"]
+            delay = value["delay"]
+            wait = value["wait"]
+            rate = value["rate"]
+            tp = value["tp"]
+            tl = value["tl"]
+
+            total_time = 0
+            total_time_c = 0
+
+            output("#########################################", key ,"################################################")
+            output("#################################### PERFORMANCE TESTING RESULT ##################################")
+            output("################################## DATA FOR MULTIPLE ITERATIONS ##################################")
+            run = 1
+            output( "{:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}".format('run', 'delay','wait', 'rate', 'tp', 'tl', 'elapsed_time', 'cpu_time'))
+            for a, b in zip(time, time_c):
+                output("{:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10} | {:<12} | {:<10}".format(run, delay, wait, rate, tp, tl, a, b))
+                run = run + 1
+                total_time = total_time + a
+                total_time_c = total_time_c + b
+            output("##################################################################################################")
+
+            run = run - 1
+            avg_elapsed_time = round((total_time/run), 4)
+            avg_cpu_time = round((total_time_c/run), 4)
+
+            output("########Average Elapsed Time : ",avg_elapsed_time ," Average CPU time",avg_cpu_time, "##############")
+            output()
+            output()
+
 
     def run():
         performanceTesting()
@@ -104,7 +139,7 @@ def main():
     l = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 
     # n - number of repetitions for each run
-    n = int(sys.argv[4]) if len(sys.argv) > 10 else 10
+    n = int(sys.argv[4]) if len(sys.argv) > 0 else 10
 
     # r - message loss rate
     r = float(sys.argv[5]) if len(sys.argv) > 1 else 0
