@@ -1,9 +1,9 @@
 import sys
 import random
 import time
-import q2
-import origq2
-specifications=[q2, origq2]
+import q3_2
+import orig_q3_2
+specifications=[q3_2, orig_q3_2]
 
 class PerfEval(process):
     def setup(p,a,l,n,r,d,w,tp,tl):  # s is set of all other processes
@@ -73,8 +73,8 @@ class PerfEval(process):
                 #output("File", spec.__name__, "run", run, "elapsed_time", elapsed_time, "elapsed_time_c", elapsed_time_c)
                 output(running_time)
 
-        output("--------RUN TIME ANALYSIS----------")
-        output(running_time)
+        #output("--------RUN TIME ANALYSIS----------")
+        #output(running_time)
         displayResult(running_time)
 
     def displayResult(running_time):
